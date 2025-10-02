@@ -1,21 +1,33 @@
 import requests
+import time
 
-# Binance API URL (5-min candle, last 10 candles)
-url = "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=10"
+# ==================== Binance API ====================
+API_KEY = "fPwmoElc3H83XAOhnob14yOJEP3OVoYM7riZNVjGZQaRB3aquCmp7JEYtMetTK64"       # ← अपने Binance API key डालो
+API_SECRET = "pbEFCtYBwLik5ERBML3aDUqGpE22NcnEGkZvJdDXYqHQp8BSFY1IBCa3n8DTK0Kb" # ← अपने Binance secret डालो
 
-# Telegram info
-bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"
-chat_id = 1316245978
+symbol = "STBLUSDT"            # Coin pair
+interval = "5m"                 # 5-minute candles
+limit = 10                      # last 10 candles (change as needed)
+
+# ==================== Telegram ====================
+bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"  # Telegram bot token
+chat_id = 1316245978                                         # Numeric chat_id
+
+# ==================== Fetch Binance data ====================
+timestamp = int(time.time() * 1000)
+url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}&timestamp={timestamp}"
+headers = {"X-MBX-APIKEY": API_KEY}
 
 try:
-    data = requests.get(url, timeout=10).json()
+    r = requests.get(url, headers=headers, timeout=10)
+    print("HTTP status:", r.status_code)
+    data = r.json()
+    print("Data received:", data)
 except Exception as e:
     requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Error fetching Binance data: {e}")
     raise
 
-# Debug: check Binance data
-print("Data received:", data)
-
+# ==================== Parse candles ====================
 candles = []
 for candle in data:
     if isinstance(candle, list) and len(candle) >= 6:
@@ -27,10 +39,9 @@ for candle in data:
             "volume": candle[5]
         })
 
-# Debug: check parsed candles
 print("Candles parsed:", candles)
 
-# Prepare message
+# ==================== Send to Telegram ====================
 if candles:
     chunk_size = 10  # 10 candles per message
     for i in range(0, len(candles), chunk_size):
