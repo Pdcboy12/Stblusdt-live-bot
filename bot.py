@@ -16,10 +16,10 @@ for candle in data:
     })
 
 # Telegram bot info
-bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"  # Rahul5555_bot token
-chat_id = 1316245978                                         # तुम्हारा numeric chat ID
+bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"  #  token
+chat_id = 1316245978                                         # Numeric chat ID
 
-# Prepare messages in chunks to avoid Telegram limit
+# Split messages in chunks to avoid Telegram limit
 chunk_size = 10  # 10 candles per message
 for i in range(0, len(candles), chunk_size):
     chunk = candles[i:i+chunk_size]
