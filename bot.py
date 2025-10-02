@@ -1,7 +1,7 @@
 import requests
 
 # Binance API URL (5-min candle, last 50 candles)
-url = "https://api.binance.com/api/v3/klines?symbol=STBLUSDT&interval=5m&limit=50"
+url = "https://api.binance.com/api/v3/klines?symbol=STBLUSDT&interval=5m&limit=10"
 
 try:
     data = requests.get(url, timeout=10).json()
