@@ -1,7 +1,7 @@
 import requests
 
 # Binance API URL (5-min candle, last 10 candles)
-url = "https://api.binance.com/api/v3/klines?symbol=STBLUSDT&interval=5m&limit=10"
+url = "https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=5m&limit=10"
 
 # Telegram info
 bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"
@@ -43,5 +43,4 @@ if candles:
         except Exception as e:
             print(f"Error sending message to Telegram: {e}")
 else:
-    # Send debug message if no candles
     requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=No candle data received from Binance")
