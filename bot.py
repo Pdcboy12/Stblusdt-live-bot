@@ -16,8 +16,8 @@ for candle in data:
     })
 
 # Telegram bot info
-bot_token = "Rahul5555_bot"   # अपने bot token डालो
-chat_id = "@pdcboy"       # अपने chat id डालो
+bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo" # अपने bot token डालो
+chat_id = 1316245978      # अपने chat id डालो
 
 # Prepare message
 message = "Last 50 candles:\n"
@@ -25,4 +25,4 @@ for c in candles:
     message += f"Open={c['open']}, High={c['high']}, Low={c['low']}, Close={c['close']}, Vol={c['volume']}\n"
 
 # Send message
-requests.get(f"https://api.telegram.org/bot{bot_token}/sendMesstextchat_id={chat_id}&text={message}")
+requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={message}")
