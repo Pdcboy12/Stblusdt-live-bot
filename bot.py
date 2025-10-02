@@ -16,8 +16,8 @@ for candle in data:
     })
 
 # Telegram bot info
-bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo" # अपने bot token डालो
-chat_id = 1316245978      # अपने chat id डालो
+bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"  # Rahul5555_bot token
+chat_id = 1316245978                                         # तुम्हारा numeric chat ID
 
 # Prepare message
 message = "Last 50 candles:\n"
