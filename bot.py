@@ -19,10 +19,11 @@ for candle in data:
 bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"  # Rahul5555_bot token
 chat_id = 1316245978                                         # तुम्हारा numeric chat ID
 
-# Prepare message
-message = "Last 50 candles:\n"
-for c in candles:
-    message += f"Open={c['open']}, High={c['high']}, Low={c['low']}, Close={c['close']}, Vol={c['volume']}\n"
-
-# Send message
-requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={message}")
+# Prepare messages in chunks to avoid Telegram limit
+chunk_size = 10  # 10 candles per message
+for i in range(0, len(candles), chunk_size):
+    chunk = candles[i:i+chunk_size]
+    message = f"Candles {i+1} to {i+len(chunk)}:\n"
+    for c in chunk:
+        message += f"Open={c['open']}, High={c['high']}, Low={c['low']}, Close={c['close']}, Vol={c['volume']}\n"
+    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={message}")
