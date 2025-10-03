@@ -1,24 +1,17 @@
-name: Binance Live Data Bot
+name: TradingView Live Bot
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: '*/5 * * * *'  # हर 5 मिनट पर चलेगा
-  workflow_dispatch:       # Manual run भी possible
+    - cron: "*/5 * * * *"  # har 5 minute me chalega
 
 jobs:
   run-bot:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repo
-        uses: actions/checkout@v3
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: actions/checkout@v3
+      - uses: actions/setup-python@v4
         with:
-          python-version: 3.11
-
-      - name: Install Requests
-        run: pip install requests
-
-      - name: Run Bot
-        run: python bot.py
+          python-version: '3.x'
+      - run: pip install requests
+      - run: python bot.py
