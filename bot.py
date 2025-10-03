@@ -2,8 +2,8 @@ import requests
 import time
 
 # ==================== Binance API ====================
-API_KEY = "fPwmoElc3H83XAOhnob14yOJEP3OVoYM7riZNVjGZQaRB3aquCmp7JEYtMetTK64"       # ← अपने Binance API key डालो
-API_SECRET = "pbEFCtYBwLik5ERBML3aDUqGpE22NcnEGkZvJdDXYqHQp8BSFY1IBCa3n8DTK0Kb" # ← अपने Binance secret डालो
+API_KEY = "YOUR_API_KEY"       # ← अपने Binance API key डालो
+API_SECRET = "YOUR_API_SECRET" # ← अपने Binance secret डालो
 
 symbol = "STBLUSDT"            # Coin pair
 interval = "5m"                 # 5-minute candles
@@ -21,23 +21,26 @@ headers = {"X-MBX-APIKEY": API_KEY}
 try:
     r = requests.get(url, headers=headers, timeout=10)
     print("HTTP status:", r.status_code)
+    print("Raw response:", r.text)  # 🔍 Debug line
     data = r.json()
-    print("Data received:", data)
 except Exception as e:
-    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Error fetching Binance data: {e}")
+    err_msg = f"Error fetching Binance data: {e}"
+    print(err_msg)
+    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={err_msg}")
     raise
 
 # ==================== Parse candles ====================
 candles = []
-for candle in data:
-    if isinstance(candle, list) and len(candle) >= 6:
-        candles.append({
-            "open": candle[1],
-            "high": candle[2],
-            "low": candle[3],
-            "close": candle[4],
-            "volume": candle[5]
-        })
+if isinstance(data, list):
+    for candle in data:
+        if isinstance(candle, list) and len(candle) >= 6:
+            candles.append({
+                "open": candle[1],
+                "high": candle[2],
+                "low": candle[3],
+                "close": candle[4],
+                "volume": candle[5]
+            })
 
 print("Candles parsed:", candles)
 
@@ -54,4 +57,6 @@ if candles:
         except Exception as e:
             print(f"Error sending message to Telegram: {e}")
 else:
-    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=No candle data received from Binance")
+    msg = f"No candle data received from Binance.\nRaw reply: {data}"
+    print(msg)
+    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={msg}")
