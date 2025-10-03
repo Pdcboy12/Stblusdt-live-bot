@@ -2,22 +2,24 @@ import requests
 import time
 
 # ==================== Settings ====================
-symbol = "BINANCE:BTCUSDT"   # pair TradingView se
-resolution = "5"             # 5 min candles
+symbol = "BINANCE:BTCUSDT"   # Pair
+resolution = "5"             # 5 min
 limit = 10                   # candles count
 
-bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"  # Tumhara bot token
-chat_id = 1316245978  # Tumhara chat id
+bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"
+chat_id = 1316245978
 
 # ==================== Time Range ====================
 end = int(time.time())
-start = end - (limit * 5 * 60)  # 10 candles * 5 min each
+start = end - (limit * 5 * 60)
 
-# ==================== TradingView API ====================
-url = f"https://tvc4.forexpros.com/989a1a112233445566/history?symbol={symbol}&resolution={resolution}&from={start}&to={end}"
+# ==================== TradingView Public Proxy ====================
+url = f"https://api.tradingview.com/history?symbol={symbol}&resolution={resolution}&from={start}&to={end}"
 
 try:
     r = requests.get(url, timeout=10)
+    print("HTTP:", r.status_code)
+    print("Raw:", r.text[:200])
     data = r.json()
 except Exception as e:
     requests.get(
@@ -26,7 +28,7 @@ except Exception as e:
     raise
 
 # ==================== Parse & Send ====================
-if "c" in data:
+if "c" in data and data["c"]:
     closes = data["c"]
     opens = data["o"]
     highs = data["h"]
