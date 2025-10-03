@@ -1,63 +1,44 @@
 import requests
 import time
 
-# ==================== Binance / CryptoCompare API ====================
-# Binance free API sometimes blocks certain locations, fallback to CryptoCompare
-symbol_binance = "XRPUSDT"   # Binance symbol
-symbol_cc = "XRP"            # CryptoCompare symbol
-fiat_cc = "USDT"
+# ==================== Settings ====================
+symbol = "XRP-USD"  # Yaha coin change kar sakte ho (BTC-USD, XRP-USD...)
+interval = "5"       # 5-min candles
+limit = 10           # last 10 candles
 
-interval = 5   # minutes
-limit = 10     # last 10 candles
-
-# ==================== Telegram ====================
 bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"
 chat_id = 1316245978
 
-# ==================== Fetch Binance data ====================
-url_binance = f"https://api.binance.com/api/v3/klines?symbol={symbol_binance}&interval=5m&limit={limit}"
-
+# ==================== Fetch data from Yahoo Finance ====================
+url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval={interval}m&range=1d"
 try:
-    r = requests.get(url_binance, timeout=10)
+    r = requests.get(url, timeout=10)
     data = r.json()
-    if not data or isinstance(data, dict) and data.get("code"):
-        raise Exception("No Binance data or API blocked, fallback to CryptoCompare")
-    source = "Binance"
 except Exception as e:
-    # Fallback to CryptoCompare
-    ts_to = int(time.time())
-    url_cc = f"https://min-api.cryptocompare.com/data/v2/histominute?fsym={symbol_cc}&tsym={fiat_cc}&limit={limit-1}&aggregate={interval}"
-    r = requests.get(url_cc, timeout=10)
-    res = r.json()
-    if res["Response"] != "Success":
-        requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=No candle data received for {symbol_binance}")
-        raise Exception(f"No data received: {res}")
-    data = res["Data"]["Data"]
-    source = "CryptoCompare"
+    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Error fetching data: {e}")
+    raise
 
 # ==================== Parse candles ====================
-candles = []
-for candle in data:
-    if source == "Binance":
-        candles.append({
-            "open": candle[1],
-            "high": candle[2],
-            "low": candle[3],
-            "close": candle[4],
-            "volume": candle[5]
-        })
-    else:  # CryptoCompare
-        candles.append({
-            "open": candle["open"],
-            "high": candle["high"],
-            "low": candle["low"],
-            "close": candle["close"],
-            "volume": candle["volumefrom"]
-        })
+try:
+    result = data["chart"]["result"][0]
+    timestamps = result["timestamp"][-limit:]
+    ohlc = result["indicators"]["quote"][0]
+    opens = ohlc["open"][-limit:]
+    highs = ohlc["high"][-limit:]
+    lows = ohlc["low"][-limit:]
+    closes = ohlc["close"][-limit:]
+    volumes = ohlc["volume"][-limit:]
+except Exception as e:
+    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Error parsing data: {e}")
+    raise
 
-# ==================== Send to Telegram ====================
-message = f"Last {len(candles)} candles ({symbol_binance}):\n"
-for c in candles:
-    message += f"O={c['open']}, H={c['high']}, L={c['low']}, C={c['close']}, V={c['volume']}\n"
+# ==================== Prepare Telegram message ====================
+message = f"Last {limit} candles ({symbol}):\n"
+for i in range(limit):
+    message += f"O={opens[i]}, H={highs[i]}, L={lows[i]}, C={closes[i]}, V={volumes[i]}\n"
 
-requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={message}")
+# ==================== Send message ====================
+try:
+    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={message}", timeout=10)
+except Exception as e:
+    print(f"Error sending message to Telegram: {e}")
