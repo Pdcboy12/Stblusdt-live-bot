@@ -1,60 +1,63 @@
 import requests
 import time
 
-# ==================== SETTINGS ====================
-# Coin pair ko yaha change karo (jaise 'BTC-USD', 'XRP-USD', etc.)
-COIN = "XRP-USD"
+# ==================== Binance / CryptoCompare API ====================
+# Binance free API sometimes blocks certain locations, fallback to CryptoCompare
+symbol_binance = "XRPUSDT"   # Binance symbol
+symbol_cc = "XRP"            # CryptoCompare symbol
+fiat_cc = "USDT"
 
-# Telegram
-BOT_TOKEN = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"  # Bot token
-CHAT_ID = 1316245978  # Numeric chat ID
+interval = 5   # minutes
+limit = 10     # last 10 candles
 
-# Candles config
-INTERVAL = 5       # 5 minutes
-NUM_CANDLES = 10   # last 10 candles
+# ==================== Telegram ====================
+bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"
+chat_id = 1316245978
 
-# ==================== FETCH DATA ====================
-# TradingView URL (snapshot style)
-timestamp_to = int(time.time())
-timestamp_from = timestamp_to - (INTERVAL * 60 * NUM_CANDLES)
-
-url = f"https://scanner.tradingview.com/crypto/scan"
-
-payload = {
-    "symbols": {"tickers": [f"BINANCE:{COIN}"], "query": {"types": []}},
-    "columns": ["open", "high", "low", "close", "volume"]
-}
+# ==================== Fetch Binance data ====================
+url_binance = f"https://api.binance.com/api/v3/klines?symbol={symbol_binance}&interval=5m&limit={limit}"
 
 try:
-    r = requests.post(url, json=payload, timeout=10)
+    r = requests.get(url_binance, timeout=10)
     data = r.json()
+    if not data or isinstance(data, dict) and data.get("code"):
+        raise Exception("No Binance data or API blocked, fallback to CryptoCompare")
+    source = "Binance"
 except Exception as e:
-    requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text=Error fetching data: {e}")
-    data = None
+    # Fallback to CryptoCompare
+    ts_to = int(time.time())
+    url_cc = f"https://min-api.cryptocompare.com/data/v2/histominute?fsym={symbol_cc}&tsym={fiat_cc}&limit={limit-1}&aggregate={interval}"
+    r = requests.get(url_cc, timeout=10)
+    res = r.json()
+    if res["Response"] != "Success":
+        requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=No candle data received for {symbol_binance}")
+        raise Exception(f"No data received: {res}")
+    data = res["Data"]["Data"]
+    source = "CryptoCompare"
 
-# ==================== PARSE CANDLES ====================
+# ==================== Parse candles ====================
 candles = []
+for candle in data:
+    if source == "Binance":
+        candles.append({
+            "open": candle[1],
+            "high": candle[2],
+            "low": candle[3],
+            "close": candle[4],
+            "volume": candle[5]
+        })
+    else:  # CryptoCompare
+        candles.append({
+            "open": candle["open"],
+            "high": candle["high"],
+            "low": candle["low"],
+            "close": candle["close"],
+            "volume": candle["volumefrom"]
+        })
 
-try:
-    if data and "data" in data and len(data["data"]) > 0:
-        for c in data["data"][0]["d"][:NUM_CANDLES]:
-            candles.append({
-                "open": c[0],
-                "high": c[1],
-                "low": c[2],
-                "close": c[3],
-                "volume": c[4]
-            })
-except Exception as e:
-    requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text=Error parsing data: {e}")
-    candles = []
+# ==================== Send to Telegram ====================
+message = f"Last {len(candles)} candles ({symbol_binance}):\n"
+for c in candles:
+    message += f"O={c['open']}, H={c['high']}, L={c['low']}, C={c['close']}, V={c['volume']}\n"
 
-# ==================== SEND TO TELEGRAM ====================
-if candles:
-    message = f"Last {NUM_CANDLES} candles ({COIN}):\n"
-    for c in candles:
-        message += f"O={c['open']}, H={c['high']}, L={c['low']}, C={c['close']}, V={c['volume']}\n"
-else:
-    message = f"No candle data received for {COIN}"
-
-requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={message}")
+requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={message}")
