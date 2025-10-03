@@ -2,7 +2,7 @@ import requests
 import time
 
 # ==================== Settings ====================
-symbol = "BTC-USD"      # Coin pair for Yahoo Finance
+symbol = "XRPUSDT"      # Coin pair for Yahoo Finance
 interval = "5m"          # 5-minute candles
 limit = 10               # last 10 candles
 
