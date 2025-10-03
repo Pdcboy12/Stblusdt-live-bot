@@ -4,7 +4,7 @@ import time
 # ==================== Coin setup ====================
 COIN = "STBL"
 QUOTE = "USDT"
-LIMIT = 50
+LIMIT = 100
 INTERVAL = 5  # minutes
 
 # ==================== Telegram ====================
