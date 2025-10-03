@@ -4,7 +4,7 @@ import time
 # ==================== Coin setup ====================
 COIN = "XRP"
 QUOTE = "USDT"
-LIMIT = 10
+LIMIT = 50
 INTERVAL = 5  # minutes
 
 # ==================== Telegram ====================
