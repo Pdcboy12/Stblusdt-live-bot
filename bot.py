@@ -2,7 +2,7 @@ import requests
 import time
 
 # ==================== Coin setup ====================
-COIN = "XRP"
+COIN = "STBL"
 QUOTE = "USDT"
 LIMIT = 50
 INTERVAL = 5  # minutes
