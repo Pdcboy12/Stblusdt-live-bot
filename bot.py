@@ -1,51 +1,60 @@
 import requests
 import time
 
-# ==================== Settings ====================
-symbol = "XRPUSDT"      # Coin pair for Yahoo Finance
-interval = "5m"          # 5-minute candles
-limit = 10               # last 10 candles
+# ==================== SETTINGS ====================
+# Coin pair ko yaha change karo (jaise 'BTC-USD', 'XRP-USD', etc.)
+COIN = "XRP-USD"
 
-bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"
-chat_id = 1316245978
+# Telegram
+BOT_TOKEN = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"  # Bot token
+CHAT_ID = 1316245978  # Numeric chat ID
 
-# ==================== Fetch Yahoo Finance data ====================
-url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval={interval}&range=1d"
-headers = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+# Candles config
+INTERVAL = 5       # 5 minutes
+NUM_CANDLES = 10   # last 10 candles
+
+# ==================== FETCH DATA ====================
+# TradingView URL (snapshot style)
+timestamp_to = int(time.time())
+timestamp_from = timestamp_to - (INTERVAL * 60 * NUM_CANDLES)
+
+url = f"https://scanner.tradingview.com/crypto/scan"
+
+payload = {
+    "symbols": {"tickers": [f"BINANCE:{COIN}"], "query": {"types": []}},
+    "columns": ["open", "high", "low", "close", "volume"]
 }
 
 try:
-    r = requests.get(url, headers=headers, timeout=10)
-    print("HTTP:", r.status_code)
-    if r.status_code == 429:
-        requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Rate limit hit (429). Retry later.")
-        raise Exception("Rate limit hit (429)")
+    r = requests.post(url, json=payload, timeout=10)
     data = r.json()
 except Exception as e:
-    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Error fetching Yahoo data: {e}")
-    raise
+    requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text=Error fetching data: {e}")
+    data = None
 
-# ==================== Parse candles ====================
-try:
-    result = data['chart']['result'][0]
-    timestamps = result['timestamp'][-limit:]
-    ohlc = result['indicators']['quote'][0]
-    opens = ohlc['open'][-limit:]
-    highs = ohlc['high'][-limit:]
-    lows = ohlc['low'][-limit:]
-    closes = ohlc['close'][-limit:]
-    volumes = ohlc['volume'][-limit:]
-except Exception as e:
-    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Error parsing data: {e}")
-    raise
-
-# ==================== Send to Telegram ====================
-message = f"Last {limit} candles ({symbol}):\n"
-for i in range(limit):
-    message += f"O={opens[i]}, H={highs[i]}, L={lows[i]}, C={closes[i]}, V={volumes[i]}\n"
+# ==================== PARSE CANDLES ====================
+candles = []
 
 try:
-    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={message}", timeout=10)
+    if data and "data" in data and len(data["data"]) > 0:
+        for c in data["data"][0]["d"][:NUM_CANDLES]:
+            candles.append({
+                "open": c[0],
+                "high": c[1],
+                "low": c[2],
+                "close": c[3],
+                "volume": c[4]
+            })
 except Exception as e:
-    print(f"Error sending message to Telegram: {e}")
+    requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text=Error parsing data: {e}")
+    candles = []
+
+# ==================== SEND TO TELEGRAM ====================
+if candles:
+    message = f"Last {NUM_CANDLES} candles ({COIN}):\n"
+    for c in candles:
+        message += f"O={c['open']}, H={c['high']}, L={c['low']}, C={c['close']}, V={c['volume']}\n"
+else:
+    message = f"No candle data received for {COIN}"
+
+requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={message}")
