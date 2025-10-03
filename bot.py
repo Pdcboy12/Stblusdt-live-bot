@@ -11,13 +11,19 @@ chat_id = 1316245978
 
 # ==================== Fetch Yahoo Finance data ====================
 url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval={interval}&range=1d"
+headers = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+}
 
 try:
-    r = requests.get(url, timeout=10)
+    r = requests.get(url, headers=headers, timeout=10)
     print("HTTP:", r.status_code)
+    if r.status_code == 429:
+        requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Rate limit hit (429). Retry later.")
+        raise Exception("Rate limit hit (429)")
     data = r.json()
 except Exception as e:
-    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Error: {e}")
+    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Error fetching Yahoo data: {e}")
     raise
 
 # ==================== Parse candles ====================
