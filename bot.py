@@ -1,44 +1,53 @@
 import requests
 import time
 
-# ==================== Settings ====================
-symbol = "XRP-USD"  # Yaha coin change kar sakte ho (BTC-USD, XRP-USD...)
-interval = "5"       # 5-min candles
-limit = 10           # last 10 candles
+# ==================== Coin setup ====================
+COIN = "XRP"
+QUOTE = "USDT"
+LIMIT = 10
+INTERVAL = 5  # minutes
 
-bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"
-chat_id = 1316245978
+# ==================== Telegram ====================
+BOT_TOKEN = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"
+CHAT_ID = 1316245978
 
-# ==================== Fetch data from Yahoo Finance ====================
-url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval={interval}m&range=1d"
+# ==================== CryptoCompare API ====================
+url = "https://min-api.cryptocompare.com/data/v2/histominute"
+params = {
+    "fsym": COIN,
+    "tsym": QUOTE,
+    "limit": LIMIT-1,  # API returns limit+1
+    "aggregate": INTERVAL
+}
+
 try:
-    r = requests.get(url, timeout=10)
+    r = requests.get(url, params=params, timeout=10)
     data = r.json()
 except Exception as e:
-    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Error fetching data: {e}")
+    requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text=Error fetching data: {e}")
     raise
 
 # ==================== Parse candles ====================
-try:
-    result = data["chart"]["result"][0]
-    timestamps = result["timestamp"][-limit:]
-    ohlc = result["indicators"]["quote"][0]
-    opens = ohlc["open"][-limit:]
-    highs = ohlc["high"][-limit:]
-    lows = ohlc["low"][-limit:]
-    closes = ohlc["close"][-limit:]
-    volumes = ohlc["volume"][-limit:]
-except Exception as e:
-    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Error parsing data: {e}")
-    raise
+candles = []
+if data.get("Response") == "Success":
+    for candle in data["Data"]["Data"]:
+        candles.append({
+            "open": candle["open"],
+            "high": candle["high"],
+            "low": candle["low"],
+            "close": candle["close"],
+            "volume": candle["volumefrom"]
+        })
 
-# ==================== Prepare Telegram message ====================
-message = f"Last {limit} candles ({symbol}):\n"
-for i in range(limit):
-    message += f"O={opens[i]}, H={highs[i]}, L={lows[i]}, C={closes[i]}, V={volumes[i]}\n"
+# ==================== Send to Telegram ====================
+if candles:
+    message = f"Last {LIMIT} candles ({COIN}-{QUOTE}):\n"
+    for c in candles:
+        message += f"O={c['open']}, H={c['high']}, L={c['low']}, C={c['close']}, V={c['volume']}\n"
 
-# ==================== Send message ====================
-try:
-    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={message}", timeout=10)
-except Exception as e:
-    print(f"Error sending message to Telegram: {e}")
+    try:
+        requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={message}", timeout=10)
+    except Exception as e:
+        print(f"Error sending message: {e}")
+else:
+    requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text=No candle data received for {COIN}-{QUOTE}")
