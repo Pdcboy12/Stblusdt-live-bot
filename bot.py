@@ -1,62 +1,45 @@
 import requests
 import time
 
-# ==================== Binance API ====================
-API_KEY = "YOUR_API_KEY"       # ← अपने Binance API key डालो
-API_SECRET = "YOUR_API_SECRET" # ← अपने Binance secret डालो
+# ==================== Settings ====================
+symbol = "BINANCE:BTCUSDT"   # pair TradingView se
+resolution = "5"             # 5 min candles
+limit = 10                   # candles count
 
-symbol = "STBLUSDT"            # Coin pair
-interval = "5m"                 # 5-minute candles
-limit = 10                      # last 10 candles (change as needed)
+bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"  # Tumhara bot token
+chat_id = 1316245978  # Tumhara chat id
 
-# ==================== Telegram ====================
-bot_token = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"  # Telegram bot token
-chat_id = 1316245978                                         # Numeric chat_id
+# ==================== Time Range ====================
+end = int(time.time())
+start = end - (limit * 5 * 60)  # 10 candles * 5 min each
 
-# ==================== Fetch Binance data ====================
-timestamp = int(time.time() * 1000)
-url = f"https://api.binance.com/api/v3/klines?symbol={symbol}&interval={interval}&limit={limit}&timestamp={timestamp}"
-headers = {"X-MBX-APIKEY": API_KEY}
+# ==================== TradingView API ====================
+url = f"https://tvc4.forexpros.com/989a1a112233445566/history?symbol={symbol}&resolution={resolution}&from={start}&to={end}"
 
 try:
-    r = requests.get(url, headers=headers, timeout=10)
-    print("HTTP status:", r.status_code)
-    print("Raw response:", r.text)  # 🔍 Debug line
+    r = requests.get(url, timeout=10)
     data = r.json()
 except Exception as e:
-    err_msg = f"Error fetching Binance data: {e}"
-    print(err_msg)
-    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={err_msg}")
+    requests.get(
+        f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=Error: {e}"
+    )
     raise
 
-# ==================== Parse candles ====================
-candles = []
-if isinstance(data, list):
-    for candle in data:
-        if isinstance(candle, list) and len(candle) >= 6:
-            candles.append({
-                "open": candle[1],
-                "high": candle[2],
-                "low": candle[3],
-                "close": candle[4],
-                "volume": candle[5]
-            })
+# ==================== Parse & Send ====================
+if "c" in data:
+    closes = data["c"]
+    opens = data["o"]
+    highs = data["h"]
+    lows = data["l"]
 
-print("Candles parsed:", candles)
+    message = f"Last {len(closes)} candles ({symbol}):\n"
+    for i in range(len(closes)):
+        message += f"O={opens[i]}, H={highs[i]}, L={lows[i]}, C={closes[i]}\n"
 
-# ==================== Send to Telegram ====================
-if candles:
-    chunk_size = 10  # 10 candles per message
-    for i in range(0, len(candles), chunk_size):
-        chunk = candles[i:i+chunk_size]
-        message = f"Candles {i+1} to {i+len(chunk)}:\n"
-        for c in chunk:
-            message += f"Open={c['open']}, High={c['high']}, Low={c['low']}, Close={c['close']}, Vol={c['volume']}\n"
-        try:
-            requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={message}", timeout=10)
-        except Exception as e:
-            print(f"Error sending message to Telegram: {e}")
+    requests.get(
+        f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={message}"
+    )
 else:
-    msg = f"No candle data received from Binance.\nRaw reply: {data}"
-    print(msg)
-    requests.get(f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text={msg}")
+    requests.get(
+        f"https://api.telegram.org/bot{bot_token}/sendMessage?chat_id={chat_id}&text=No candle data from TradingView"
+    )
