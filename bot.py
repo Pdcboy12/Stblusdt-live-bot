@@ -1,91 +1,53 @@
 import requests
-import time
 
-# ==================== Coin setup ====================
+# ==================== Config ====================
 COIN = "STBL"
 QUOTE = "USDT"
 LIMIT = 50
-INTERVAL = 5  # minutes
+INTERVALS = [5, 30]   # yaha aur bhi interval add kar sakte ho (jaise 60 for 1h)
 
 # ==================== Telegram ====================
 BOT_TOKEN = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"
 CHAT_ID = 1316245978
 
-# ==================== CryptoCompare API ====================
-url = "https://min-api.cryptocompare.com/data/v2/histominute"
+# ==================== API ====================
+URL = "https://min-api.cryptocompare.com/data/v2/histominute"
 
-# ---------- 5 Minute candles ----------
-params_5m = {
-    "fsym": COIN,
-    "tsym": QUOTE,
-    "limit": LIMIT-1,
-    "aggregate": INTERVAL
-}
+def fetch_candles(interval):
+    params = {
+        "fsym": COIN,
+        "tsym": QUOTE,
+        "limit": LIMIT-1,
+        "aggregate": interval
+    }
+    try:
+        r = requests.get(URL, params=params, timeout=10)
+        data = r.json()
+        if data.get("Response") == "Success":
+            candles = []
+            for candle in data["Data"]["Data"]:
+                candles.append(
+                    f"O={candle['open']}, H={candle['high']}, L={candle['low']}, C={candle['close']}, V={candle['volumefrom']}"
+                )
+            return candles
+    except Exception as e:
+        return [f"Error fetching {interval}m data: {e}"]
+    return []
 
-try:
-    r5 = requests.get(url, params=params_5m, timeout=10)
-    data_5m = r5.json()
-except Exception as e:
-    requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text=Error fetching 5m data: {e}")
-    raise
+def send_message(text):
+    # split message if too long
+    for i in range(0, len(text), 3900):
+        chunk = text[i:i+3900]
+        try:
+            requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                         params={"chat_id": CHAT_ID, "text": chunk}, timeout=10)
+        except Exception as e:
+            print(f"Error sending message: {e}")
 
-candles_5m = []
-if data_5m.get("Response") == "Success":
-    for candle in data_5m["Data"]["Data"]:
-        candles_5m.append({
-            "open": candle["open"],
-            "high": candle["high"],
-            "low": candle["low"],
-            "close": candle["close"],
-            "volume": candle["volumefrom"]
-        })
+# ==================== Build + Send ====================
+full_message = ""
+for interval in INTERVALS:
+    candles = fetch_candles(interval)
+    full_message += f"Last {LIMIT} candles ({interval}m - {COIN}-{QUOTE}):\n" + "\n".join(candles) + "\n\n"
 
-# ---------- 30 Minute candles ----------
-params_30m = {
-    "fsym": COIN,
-    "tsym": QUOTE,
-    "limit": LIMIT-1,
-    "aggregate": 30
-}
-
-try:
-    r30 = requests.get(url, params=params_30m, timeout=10)
-    data_30m = r30.json()
-except Exception as e:
-    requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text=Error fetching 30m data: {e}")
-    raise
-
-candles_30m = []
-if data_30m.get("Response") == "Success":
-    for candle in data_30m["Data"]["Data"]:
-        candles_30m.append({
-            "open": candle["open"],
-            "high": candle["high"],
-            "low": candle["low"],
-            "close": candle["close"],
-            "volume": candle["volumefrom"]
-        })
-
-# ==================== Send to Telegram ====================
-message = ""
-
-# 5m data
-if candles_5m:
-    message += f"Last {LIMIT} candles (5m - {COIN}-{QUOTE}):\n"
-    for c in candles_5m:
-        message += f"O={c['open']}, H={c['high']}, L={c['low']}, C={c['close']}, V={c['volume']}\n"
-else:
-    message += f"No 5m candle data for {COIN}-{QUOTE}\n"
-
-# 30m data
-if candles_30m:
-    message += f"\nLast {LIMIT} candles (30m - {COIN}-{QUOTE}):\n"
-    for c in candles_30m:
-        message += f"O={c['open']}, H={c['high']}, L={c['low']}, C={c['close']}, V={c['volume']}\n"
-else:
-    message += f"No 30m candle data for {COIN}-{QUOTE}\n"
-
-try:
-    requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage?chat_id={CHAT_ID}&text={message}", timeout=10)
-except Exception as e:
-    print(f"Error sending message: {e}")
+send_message(full_message)
