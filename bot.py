@@ -35,17 +35,12 @@ def fetch_candles(interval):
         r = requests.get(URL, params=params, timeout=10)
         data = r.json()
         if data.get("Response") == "Success":
-            candles = []
-            for candle in data["Data"]["Data"]:
-                candles.append({
-                    "O": candle['open'],
-                    "H": candle['high'],
-                    "L": candle['low'],
-                    "C": candle['close'],
-                    "V": candle['volumefrom']
-                })
-            return candles
+            return [
+                {"O": c["open"], "H": c["high"], "L": c["low"], "C": c["close"], "V": c["volumefrom"]}
+                for c in data["Data"]["Data"]
+            ]
         else:
+            print("Fetch error:", data)
             return []
     except Exception as e:
         print(f"Error fetching {interval}m data: {e}")
@@ -55,32 +50,34 @@ def send_telegram(text):
     for i in range(0, len(text), 3900):
         chunk = text[i:i+3900]
         try:
-            requests.get(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
-                         params={"chat_id": CHAT_ID, "text": chunk}, timeout=10)
+            requests.get(
+                f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage",
+                params={"chat_id": CHAT_ID, "text": chunk},
+                timeout=10
+            )
         except Exception as e:
             print(f"Telegram send error: {e}")
 
 def upload_to_github(data):
     url = f"https://api.github.com/repos/{GITHUB_USER}/{GITHUB_REPO}/contents/{GITHUB_FILE_PATH}"
-    # Get current file SHA
     sha = None
     try:
         r = requests.get(url, headers={"Authorization": f"token {GITHUB_TOKEN}"})
         if r.status_code == 200:
-            sha = r.json()["sha"]
-    except:
-        pass
+            sha = r.json().get("sha")
+    except Exception as e:
+        print("GitHub fetch SHA error:", e)
 
     payload = {
         "message": "Update candles",
-        "content": base64.b64encode(json.dumps(data).encode()).decode(),
+        "content": base64.b64encode(json.dumps(data).encode()).decode()
     }
     if sha:
         payload["sha"] = sha
     try:
         r = requests.put(url, headers={"Authorization": f"token {GITHUB_TOKEN}"}, json=payload)
         if r.status_code in [200, 201]:
-            print("GitHub updated successfully")
+            print("GitHub updated successfully ✅")
         else:
             print("GitHub update failed:", r.json())
     except Exception as e:
