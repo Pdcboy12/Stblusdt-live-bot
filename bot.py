@@ -14,9 +14,9 @@ BOT_TOKEN = "8191333539:AAF-XGRBPB2_gywymSz6VfUXlNIiWl50kMo"
 CHAT_ID = 1316245978
 
 # ==================== GitHub ====================
-GITHUB_TOKEN = "<YOUR_GITHUB_TOKEN>"  # Replace with your GitHub personal token
-GITHUB_USER = "<YOUR_GITHUB_USERNAME>"
-GITHUB_REPO = "<YOUR_REPO_NAME>"
+GITHUB_TOKEN = os.getenv("GH_TOKEN")  # Replace with your GitHub personal token
+GITHUB_USER = "<Pdcboy12>"
+GITHUB_REPO = "<Stblusdt-live-bot>"
 GITHUB_FILE_PATH = "candles_data.json"
 
 # ==================== CryptoCompare API ====================
